@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Shop</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.17.0/jquery.validate.min.js"></script>
+  <!-- datatables -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css">
+  <script src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
+  <!-- fontawesome -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+  <!-- axios -->
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <style>
+    /* backgroud image from random */
+    body {
+      background-image: url('https://source.unsplash.com/random');
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      background-size: cover;
+    }
+    /* container background color */
+    .container {
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 20px;
+    }
+    /* validation */
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12">
+        <h1>Shop</h1>
+        <p id="product-message">Add Product</p>
+        <form>
+          <input type="hidden" class="form-control" name="id" id="id">
+          <!-- inline BS form -->
+          <div class="form-group">
+            <label for="name">Name</label>
+            <input type="text" class="form-control" name="name" id="name">
+          </div>
+          <div class="form-group">
+            <label for="price">Price</label>
+            <input type="text" class="form-control" name="price" id="price">
+          </div>
+          <div class="form-group">
+            <label for="stock">Stock</label>
+            <input type="text" class="form-control" name="stock" id="stock">
+          </div>
+          <!-- form submit -->
+          <button type="submit" class="btn btn-success">Save</button>
+          <!-- form reset -->
+          <button type="reset" class="btn btn-danger">Reset</button>
+        </form>
+        <hr>
+        <h2>Products</h2>
+
+        <div>
+          <table id="products" class="table compact table-striped table-sm table-hover table-responsive table-bordered">
+            <thead>
+            </thead>
+            <tbody>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    let table = null;
+    let dummy = null;
+    // get dummy
+    if (false)
+      $.getJSON('https://randomuser.me/api/?results=1000', function (data) {
+        dummy = data.results;
+        // add 1000 products
+        for (let i = 0; i < 1000; i++) {
+          axios.post('/api/Products', {
+            // get 
+            name: dummy[i].name.first,
+            price: Math.floor(Math.random() * 1000),
+            stock: Math.floor(Math.random() * 1000)
+          })
+            .then(function (response) {
+              console.log(response);
+            })
+            .catch(function (error) {
+              console.log(error);
+            });
+        }
+      });
+
+    $(document).ready(function () {
+      // datatables
+      table = $('#products').DataTable({
+        "ajax": {
+          "url": "/api/Products",
+          "dataSrc": ""
+          // loading
+
+        },
+        "columns": [
+          { "data": "id" },
+          { "data": "name" },
+          { "data": "price" },
+          { "data": "stock" },
+          {
+            "data": null,
+            "defaultContent": `
+            <button class='btn btn-danger btn-sm btndelete'><i class='fa fa-trash'></i></button>
+            <button class='btn btn-success btn-sm btnedit'><i class='fa fa-pencil'></i></button>`
+          }
+        ],
+        "order": [[3, "desc"]],
+        // columns name
+        "columnDefs": [
+          { "title": "Id", "targets": 0 },
+          { "title": "Name", "targets": 1 },
+          { "title": "Price", "targets": 2 },
+          { "title": "Stock", "targets": 3 },
+          { "title": "Delete", "targets": 4 },
+          {
+            "targets": [0],
+            "visible": false,
+            "searchable": false
+          }
+
+        ]
+      });
+      loadProducts();
+      // form validation
+      $('form').validate({
+        rules: {
+          name: {
+            required: true,
+            minlength: 3
+          },
+          price: {
+            required: true,
+            number: true
+          },
+          stock: {
+            required: true,
+            number: true
+          }
+        },
+        messages: {
+          name: {
+            required: "Please enter a name",
+            minlength: "Your name must consist of at least 3 characters"
+          },
+          price: {
+            required: "Please enter a price",
+            number: "Please enter a valid price"
+          },
+          stock: {
+            required: "Please enter a stock",
+            number: "Please enter a valid stock"
+          }
+        }
+      });
+    });
+    //ajax
+    const saveProduct = function () {
+
+      const id = document.querySelector('input[name="id"]').value;
+      const name = document.querySelector('input[name="name"]').value;
+      const price = document.querySelector('input[name="price"]').value;
+      const stock = document.querySelector('input[name="stock"]').value;
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/Products');
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          console.log('Product saved');
+          loadProducts();
+        }
+        else {
+          console.log('Request failed.  Returned status of ' + xhr.status);
+        }
+      };
+      xhr.send(JSON.stringify({ name, price, stock }));
+
+    };
+
+    const editProducts = function (id, name, price, stock) {
+      // get the id of the product
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', '/api/Products/' + id);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          console.log('Product edited');
+        }
+        else {
+          console.log('Request failed.  Returned status of ' + xhr.status);
+        }
+      };
+      xhr.send(JSON.stringify({ name, price, stock }));
+    };
+    const loadProducts = function () {
+      $('#products').DataTable().ajax.reload();
+    }
+    const deleteProducts = function (id) {
+      const xhr = new XMLHttpRequest();
+      xhr.open('DELETE', '/api/Products/' + id);
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          console.log('Product deleted');
+        }
+        else {
+          console.log('Request failed.  Returned status of ' + xhr.status);
+        }
+      };
+      xhr.send();
+    };
+
+
+    $('form').on('submit', function (e) {
+      e.preventDefault();
+      const id = document.querySelector('input[name="id"]').value;
+      if (id === '') {
+        saveProduct();
+      }
+      else {
+        const name = document.querySelector('input[name="name"]').value;
+        const price = document.querySelector('input[name="price"]').value;
+        const stock = document.querySelector('input[name="stock"]').value;
+        editProducts(id, name, price, stock);
+      }
+      setTimeout(function () {
+        loadProducts();
+      }, 100);
+      // reset without validation
+      this.reset();
+    });
+    $('html').on('click', '.btndelete', function () {
+      // get the id of the product
+      const id = table.row($(this).parents('tr')).data().id;
+      deleteProducts(id);
+      loadProducts();
+    });
+    $('html').on('click', '.btnedit', function () {
+      // fill form
+      const id = table.row($(this).parents('tr')).data().id;
+      const name = table.row($(this).parents('tr')).data().name;
+      const price = table.row($(this).parents('tr')).data().price;
+      const stock = table.row($(this).parents('tr')).data().stock;
+      document.querySelector('input[name="id"]').value = id;
+      document.querySelector('input[name="name"]').value = name;
+      document.querySelector('input[name="price"]').value = price;
+      document.querySelector('input[name="stock"]').value = stock;
+      // fokus
+      document.querySelector('input[name="name"]').focus();
+      // product-message
+      document.querySelector('#product-message').innerHTML = 'Edit product';
+    });
+    // product-message if reset button is clicked
+    $('html').on('click', 'button[type="reset"]', function () {
+      document.querySelector('#product-message').innerHTML = 'Add product';
+    });
+  </script>
+</body>
+
+</html>
